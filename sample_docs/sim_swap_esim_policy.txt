@@ -1,0 +1,22 @@
+OrbitMobile — SIM Swap and eSIM Policy
+Policy version: 3.2 (2025-04-15)
+
+PHYSICAL SIM SWAP
+- SIM swaps require identity verification: account PIN plus one-time passcode to the registered email OR in-store government ID check.
+- Online SIM swap requests are processed within 4 business hours after verification.
+- After swap, the old SIM stops working within 15 minutes.
+- Maximum 2 SIM swaps per line per rolling 30-day period unless fraud team approves an exception.
+
+eSIM
+- eSIM is supported on OrbitMobile-certified devices listed on the device compatibility page.
+- One active eSIM profile per line; physical SIM and eSIM cannot be active simultaneously on the same line.
+- eSIM QR codes expire 24 hours after issuance. Request a new QR from self-care if expired.
+- Transferring eSIM to a new phone requires removing the profile on the old device first, then scanning a new QR.
+
+FRAUD HOLD
+- High-risk swap attempts trigger a 24-hour security hold and SMS alert to the account owner.
+- Customers on fraud hold must visit a retail store with photo ID to complete the swap.
+
+NOT SUPPORTED
+- SIM swap via social media direct messages.
+- Sharing eSIM QR codes with third parties (QR is single-use).

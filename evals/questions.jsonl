@@ -1,0 +1,26 @@
+{"id": "q01", "question": "How much does Orbit Lite cost per month?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["$15", "15"], "unanswerable": false}
+{"id": "q02", "question": "How many gigabytes are included with Orbit Plus?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["8 GB", "8"], "unanswerable": false}
+{"id": "q03", "question": "Does Orbit Lite support data rollover?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["does not", "no rollover", "Orbit Lite"], "unanswerable": false}
+{"id": "q04", "question": "What is the maximum data rollover amount for eligible plans?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["5 GB", "5"], "unanswerable": false}
+{"id": "q05", "question": "How often do prepaid plans renew?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["30 days", "30"], "unanswerable": false}
+{"id": "q06", "question": "Is international roaming enabled by default on prepaid?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["off by default", "default"], "unanswerable": false}
+{"id": "q07", "question": "What roaming starter pack comes with Orbit Max?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["500 MB", "30 minutes", "Zone A"], "unanswerable": false}
+{"id": "q08", "question": "What are the prepaid phone agent support hours?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["08:00", "22:00"], "unanswerable": false}
+{"id": "q09", "question": "Can I recharge with a retail voucher?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["voucher", "12-digit"], "unanswerable": false}
+{"id": "q10", "question": "How many minutes does Orbit Lite include?", "expected_source": "prepaid_plans_faq.md", "key_facts": ["500"], "unanswerable": false}
+{"id": "q11", "question": "What verification is required for a SIM swap?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["PIN", "passcode", "verification"], "unanswerable": false}
+{"id": "q12", "question": "How long until the old SIM stops working after a swap?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["15 minutes", "15"], "unanswerable": false}
+{"id": "q13", "question": "How many SIM swaps are allowed per 30 days?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["2", "two"], "unanswerable": false}
+{"id": "q14", "question": "When does an eSIM QR code expire?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["24 hours", "24"], "unanswerable": false}
+{"id": "q15", "question": "Can physical SIM and eSIM be active at the same time on one line?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["cannot", "not"], "unanswerable": false}
+{"id": "q16", "question": "What happens on a high-risk SIM swap attempt?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["24-hour", "fraud hold", "hold"], "unanswerable": false}
+{"id": "q17", "question": "Can I request a SIM swap via social media DM?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["not supported", "NOT SUPPORTED"], "unanswerable": false}
+{"id": "q18", "question": "How long do online SIM swap requests take after verification?", "expected_source": "sim_swap_esim_policy.txt", "key_facts": ["4 business hours", "4"], "unanswerable": false}
+{"id": "q19", "question": "What is the postpaid service suspension threshold for late payment?", "expected_source": "billing_refunds_guide.md", "key_facts": ["20 days", "20"], "unanswerable": false}
+{"id": "q20", "question": "What is the restoration fee after suspension?", "expected_source": "billing_refunds_guide.md", "key_facts": ["$5", "5"], "unanswerable": false}
+{"id": "q21", "question": "How long do card refunds take once approved?", "expected_source": "billing_refunds_guide.md", "key_facts": ["5–10 business days", "5-10", "5 to 10"], "unanswerable": false}
+{"id": "q22", "question": "Within how many days must billing disputes be filed?", "expected_source": "billing_refunds_guide.md", "key_facts": ["60 days", "60"], "unanswerable": false}
+{"id": "q23", "question": "What is the bill cycle length?", "expected_source": "billing_refunds_guide.md", "key_facts": ["28-day", "28"], "unanswerable": false}
+{"id": "q24", "question": "How do I activate a new OrbitMobile SIM?", "expected_source": "quick_start_guide.pdf", "key_facts": ["*228#", "228"], "unanswerable": false}
+{"id": "q25", "question": "What is OrbitMobile's corporate headquarters street address?", "expected_source": "", "key_facts": [], "unanswerable": true}
+{"id": "q26", "question": "Does OrbitMobile offer satellite phone plans on Mars?", "expected_source": "", "key_facts": [], "unanswerable": true}

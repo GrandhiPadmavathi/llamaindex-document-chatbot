@@ -4,10 +4,14 @@ __pycache__/
 venv/
 .venv/
 .env
+.pytest_cache/
 
 # Local caches (contain text extracted from uploaded documents)
 llamaindex_cache/
 bot_cache/
+evals/.eval_cache/
+evals/eval_run.log
+evals/eval_run.err.log
 *.pkl
 
 # IDE / OS

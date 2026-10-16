@@ -1,226 +1,129 @@
 import streamlit as st
-from PyPDF2 import PdfReader
-import docx
-import pandas as pd
-import json
-import os
-import hashlib
-from llama_index.core import VectorStoreIndex, Document, Settings, StorageContext, load_index_from_storage
-from llama_index.embeddings.ollama import OllamaEmbedding
-from llama_index.llms.ollama import Ollama
-from llama_index.core.node_parser import SentenceSplitter
-from cache_manager import BotCacheManager
 
-# Initialize cache manager
-cache_manager = BotCacheManager()
+from chatbot.answering import generate_answer
+from chatbot.cache import BotCacheManager
+from chatbot.config import DEFAULT_CONFIG, RetrievalSettings
+from chatbot.loaders import content_fingerprint, extract_documents_from_upload, read_upload_as_bytes
+from chatbot.indexing import get_or_create_index
+from chatbot.llm import configure_llama_index
+from chatbot.citations import format_sources_markdown
 
-# Configure LlamaIndex settings
-Settings.llm = Ollama(model="mistral", request_timeout=1200.0)
-Settings.embed_model = OllamaEmbedding(model_name="nomic-embed-text")
+st.set_page_config(page_title="Document Chatbot", page_icon="📚", layout="wide")
+st.header("Document Chatbot (LlamaIndex + Ollama)")
 
-st.header("My Document Chatbot (LlamaIndex)")
-
-def get_file_hash(file_content):
-    """Generate a hash for the file content to detect changes"""
-    return hashlib.md5(file_content.encode()).hexdigest()
-
-def save_index_safe(index, file_hash):
-    """Safely save LlamaIndex to disk"""
-    try:
-        # Create a cache directory for indexes
-        cache_dir = "llamaindex_cache"
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-        
-        # Save the index
-        index_path = os.path.join(cache_dir, f"index_{file_hash}")
-        index.storage_context.persist(persist_dir=index_path)
-        
-        # Cache the file hash for quick lookup
-        cache_manager.cache_response(f"llamaindex_{file_hash}", {
-            "index_path": index_path,
-            "file_hash": file_hash,
-            "status": "saved"
-        })
-        
-        return True
-    except Exception as e:
-        st.warning(f"Could not cache index: {str(e)}")
-        return False
-
-def load_index_safe(file_hash):
-    """Safely load LlamaIndex from disk"""
-    try:
-        # Check if we have cached info about this index
-        cached_info = cache_manager.get_cached_response(f"llamaindex_{file_hash}")
-        
-        if cached_info and "index_path" in cached_info:
-            index_path = cached_info["index_path"]
-            
-            # Check if the index directory exists
-            if os.path.exists(index_path):
-                # Load the storage context and index
-                storage_context = StorageContext.from_defaults(persist_dir=index_path)
-                index = load_index_from_storage(storage_context)
-                return index
-        
-        return None
-    except Exception as e:
-        st.warning(f"Could not load cached index: {str(e)}")
-        return None
-
-def extract_text_from_file(file):
-    """Extract text from various file formats"""
-    text = ""
-    file_type = file.type
-    
-    try:
-        if file_type == "application/pdf":
-            # PDF files
-            pdf_reader = PdfReader(file)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-                
-        elif file_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            # DOCX files
-            doc = docx.Document(file)
-            for paragraph in doc.paragraphs:
-                text += paragraph.text + "\n"
-                
-        elif file_type == "text/plain":
-            # TXT files
-            text = str(file.read(), "utf-8")
-            
-        elif file_type == "text/csv":
-            # CSV files
-            df = pd.read_csv(file)
-            text = df.to_string()
-            
-        elif file_type in ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]:
-            # Excel files
-            df = pd.read_excel(file)
-            text = df.to_string()
-            
-        elif file_type == "application/json":
-            # JSON files
-            json_data = json.load(file)
-            text = json.dumps(json_data, indent=2)
-            
-        elif file_type == "text/markdown":
-            # Markdown files
-            text = str(file.read(), "utf-8")
-            
-        elif file_type in ["application/rtf", "text/rtf"]:
-            # RTF files (basic support)
-            text = str(file.read(), "utf-8")
-            
-        else:
-            # Try to read as text for other formats
-            try:
-                text = str(file.read(), "utf-8")
-            except:
-                st.error(f"Unsupported file format: {file_type}")
-                return None
-                
-    except Exception as e:
-        st.error(f"Error reading file: {str(e)}")
-        return None
-        
-    return text
+config = DEFAULT_CONFIG
+cache_manager = BotCacheManager(cache_dir=config.bot_cache_dir)
 
 with st.sidebar:
-    st.title("Your Documents")
-    
-    # Enhanced file uploader with multiple formats
+    st.title("Your documents")
     file = st.file_uploader(
-        "Upload any document and start asking questions", 
+        "Upload a document and ask questions",
         type=[
-            "pdf", "docx", "txt", "csv", "xlsx", "xls", 
-            "json", "md", "rtf", "py", "js", "html", "xml", "log"
-        ]
+            "pdf",
+            "docx",
+            "txt",
+            "csv",
+            "xlsx",
+            "xls",
+            "json",
+            "md",
+            "rtf",
+            "py",
+            "js",
+            "html",
+            "xml",
+            "log",
+        ],
     )
-    
+
+    st.divider()
+    st.subheader("Retrieval settings")
+    chunk_size = st.slider("Chunk size", 200, 1200, config.default_chunk_size, 50)
+    chunk_overlap = st.slider("Chunk overlap", 0, 400, config.default_chunk_overlap, 25)
+    top_k = st.slider("Top K chunks", 1, 15, config.default_top_k)
+    hybrid = st.toggle("Hybrid search (BM25 + vector)", value=True)
+    rerank = st.toggle("Cross-encoder re-rank", value=False)
+    temperature = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05)
+    faithfulness_check = st.toggle("Faithfulness check (LLM judge)", value=False)
+
     if file is not None:
-        st.info(f"📄 File: {file.name}")
-        st.info(f"📊 Size: {file.size / 1024:.1f} KB")
-        st.info(f"🔧 Type: {file.type}")
+        st.info(f"File: **{file.name}** ({file.size / 1024:.1f} KB)")
 
-# Extract the text and create index
 if file is not None:
-    with st.spinner(f"📄 Processing {file.name}..."):
-        text = extract_text_from_file(file)
-        
-    if text is None:
-        st.stop()
-        
-    if len(text.strip()) == 0:
-        st.error("No text content found in the file!")
-        st.stop()
-    
-    # Generate hash for the file content to create unique cache
-    file_hash = get_file_hash(text)
-    
-    # Try to load cached index
-    with st.spinner("🚀 Checking for cached index..."):
-        index = load_index_safe(file_hash)
-        
-    if index is not None:
-        st.success("✅ Loaded index from cache! Ready to answer questions.")
-    else:
-        # If no cached index, create new one
-        with st.spinner("🧠 Creating document index..."):
-            # Create Document object
-            document = Document(text=text, metadata={"filename": file.name})
-            
-            # Configure node parser (equivalent to text splitter)
-            node_parser = SentenceSplitter(
-                chunk_size=600,
-                chunk_overlap=100,
-            )
-            
-            # Create index
-            index = VectorStoreIndex.from_documents(
-                [document],
-                node_parser=node_parser,
-                show_progress=True
-            )
-        
-        # Cache the index for future use
-        with st.spinner("💾 Caching index..."):
-            if save_index_safe(index, file_hash):
-                st.success("✅ Document processed and cached! Ask your questions below.")
-            else:
-                st.success("✅ Document ready! Ask your questions below.")
-
-    # Create query engine
-    query_engine = index.as_query_engine(
-        similarity_top_k=5,
-        response_mode="compact"
+    settings = RetrievalSettings(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        top_k=top_k,
+        hybrid=hybrid,
+        rerank=rerank,
+        temperature=temperature,
     )
 
-    # Initialize session state for conversation history
+    with st.spinner(f"Processing {file.name}..."):
+        buffer = read_upload_as_bytes(file)
+        buffer.name = file.name  # type: ignore[attr-defined]
+        documents = extract_documents_from_upload(buffer, filename=file.name)
+
+    if not documents:
+        st.error("No text content found in the file.")
+        st.stop()
+
+    file_hash = content_fingerprint(documents)
+
+    with st.spinner("Loading or building index..."):
+        llm = configure_llama_index(config, temperature=temperature)
+        index = get_or_create_index(
+            documents,
+            file_hash,
+            chunk_size=settings.chunk_size,
+            chunk_overlap=settings.chunk_overlap,
+            config=config,
+            cache_manager=cache_manager,
+        )
+
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display conversation history
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
-            st.write(message["content"])
+            st.markdown(message["content"])
+            if message.get("sources"):
+                with st.expander("Sources"):
+                    st.markdown(message["sources"])
 
-    # Chat input
     if prompt := st.chat_input("Ask a question about your document"):
-        # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
-            st.write(prompt)
+            st.markdown(prompt)
 
-        # Generate response
         with st.chat_message("assistant"):
-            with st.spinner("🤔 Generating answer..."):
-                # Query the index
-                response = query_engine.query(prompt)
-                answer = str(response)
-                st.write(answer)
-                
-                # Add assistant response to chat history
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+            with st.spinner("Generating answer..."):
+                result = generate_answer(
+                    index,
+                    prompt,
+                    llm,
+                    settings,
+                    config=config,
+                    faithfulness_check=faithfulness_check,
+                )
+
+            if result.faithfulness == "supported":
+                st.success("Faithfulness: supported by context")
+            elif result.faithfulness == "unsupported":
+                st.warning("Faithfulness: not fully supported by context")
+            elif result.refused:
+                st.info("Answer grounded refusal")
+
+            st.markdown(result.text)
+            sources_md = format_sources_markdown(result.citations)
+            with st.expander(f"Sources ({len(result.citations)})"):
+                st.markdown(sources_md)
+
+            st.session_state.messages.append(
+                {"role": "assistant", "content": result.text, "sources": sources_md}
+            )
+else:
+    st.markdown(
+        "Upload a PDF, DOCX, TXT, or other supported file in the sidebar to begin. "
+        "Answers include inline citations **[1]**, **[2]** and expandable source snippets."
+    )

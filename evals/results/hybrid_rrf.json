@@ -1,0 +1,12 @@
+{
+  "name": "hybrid_rrf",
+  "hit_rate_at_k": 0.9230769230769231,
+  "mrr": 0.8653846153846154,
+  "answer_accuracy": 1.0,
+  "refusal_rate": 0.07692307692307693,
+  "refusal_accuracy_unanswerable": 1.0,
+  "avg_latency_s": 97.37407863076922,
+  "rerank_available": null,
+  "rerank_note": null,
+  "timestamp": "2026-10-16 06:44:34"
+}
