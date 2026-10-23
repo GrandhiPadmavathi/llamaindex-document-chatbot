@@ -25,12 +25,17 @@ def configure_embed_model(
         model: BaseEmbedding = mock_embed_model()
     else:
         cfg = config or DEFAULT_CONFIG
-        from llama_index.embeddings.ollama import OllamaEmbedding
+        if cfg.embed_provider == "huggingface":
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
-        model = OllamaEmbedding(
-            model_name=cfg.embed_model,
-            base_url=cfg.ollama_base_url,
-        )
+            model = HuggingFaceEmbedding(model_name=cfg.hf_embed_model)
+        else:
+            from llama_index.embeddings.ollama import OllamaEmbedding
+
+            model = OllamaEmbedding(
+                model_name=cfg.embed_model,
+                base_url=cfg.ollama_base_url,
+            )
     Settings.embed_model = model
     _CONFIGURED = True
     return model

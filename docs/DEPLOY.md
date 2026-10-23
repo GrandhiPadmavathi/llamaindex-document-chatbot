@@ -28,17 +28,34 @@ Persisted indexes and caches are written inside the container unless you mount v
 
 ## Hugging Face Spaces
 
-Spaces run the Docker/Streamlit app in Hugging Face infrastructure. They **do not** include a local Ollama daemon.
+Spaces have no Ollama daemon, so the hosted demo uses:
 
-Options:
+| Part | Setting |
+|---|---|
+| LLM | `LLM_PROVIDER=groq`, `GROQ_MODEL=llama-3.1-8b-instant` (free tier) |
+| Embeddings | `EMBED_PROVIDER=huggingface`, `BAAI/bge-small-en-v1.5` on CPU (baked into the image) |
+| Limits | `DEMO_MODE=1`: sample documents preloaded, 25 questions per session, 2 MB uploads, 500-character questions |
 
-| Approach | Notes |
-|----------|--------|
-| Remote Ollama | Run Ollama on a VM you control; set `OLLAMA_BASE_URL` to that HTTPS/HTTP endpoint (lock down firewall + TLS). |
-| OpenAI-compatible API | Set `LLM_PROVIDER=openai`, `OPENAI_API_KEY`, and optionally `OPENAI_API_BASE` for Azure, Groq, Together, etc. Embeddings still use Ollama unless you extend the code. |
-| CPU embedding swap | For a full cloud setup, replace `OllamaEmbedding` with a hosted embedding API (not enabled by default in this repo). |
+`deploy/space/` holds the Space's `Dockerfile` (non-root user, CPU-only torch, models pre-downloaded) and its
+`README.md` (Space metadata). To deploy:
 
-Copy `.env.example` to `.env` locally; on Spaces, use **Repository secrets** / Space variables for the same keys.
+```bash
+# PowerShell: $env:HF_TOKEN="..."; $env:GROQ_API_KEY="..."
+export HF_TOKEN=...        # Hugging Face token with write access
+export GROQ_API_KEY=...    # stored as an encrypted Space secret
+python scripts/deploy_space.py --space <hf-username>/document-chatbot
+```
+
+The script creates the Space if needed, sets `GROQ_API_KEY` as a secret and uploads only the app code and sample
+documents. The first build takes a few minutes.
+
+Run the same configuration locally (no Ollama needed):
+
+```bash
+LLM_PROVIDER=groq EMBED_PROVIDER=huggingface DEMO_MODE=1 streamlit run app.py
+```
+
+Indexes are cached per document, embedding model and chunk settings, so switching providers never mixes vectors.
 
 ## Environment variables
 

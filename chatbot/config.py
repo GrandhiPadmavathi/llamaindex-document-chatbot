@@ -23,6 +23,29 @@ class AppConfig:
     cross_encoder_model: str = os.getenv(
         "CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
     )
+    groq_api_key: str = os.getenv("GROQ_API_KEY", "")
+    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    embed_provider: str = os.getenv("EMBED_PROVIDER", "ollama").lower()
+    hf_embed_model: str = os.getenv("HF_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
+    demo_mode: bool = os.getenv("DEMO_MODE", "0").lower() in ("1", "true", "yes")
+    demo_max_questions: int = int(os.getenv("DEMO_MAX_QUESTIONS", "25"))
+    demo_max_upload_mb: float = float(os.getenv("DEMO_MAX_UPLOAD_MB", "2"))
+    max_question_chars: int = int(os.getenv("MAX_QUESTION_CHARS", "500"))
+    sample_docs_dir: str = os.getenv("SAMPLE_DOCS_DIR", "sample_docs")
+
+    @property
+    def embed_identity(self) -> str:
+        if self.embed_provider == "huggingface":
+            return f"huggingface:{self.hf_embed_model}"
+        return f"ollama:{self.embed_model}"
+
+    @property
+    def llm_identity(self) -> str:
+        if self.llm_provider == "groq":
+            return f"Groq · {self.groq_model}"
+        if self.llm_provider == "openai":
+            return f"OpenAI-compatible · {self.openai_model}"
+        return f"Ollama · {self.llm_model}"
 
 
 DEFAULT_CONFIG = AppConfig()

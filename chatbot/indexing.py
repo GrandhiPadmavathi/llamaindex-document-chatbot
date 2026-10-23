@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from llama_index.core import Document, StorageContext, VectorStoreIndex, load_index_from_storage
@@ -72,11 +73,18 @@ def get_or_create_index(
 ) -> VectorStoreIndex:
     config = config or DEFAULT_CONFIG
     cache_manager = cache_manager or BotCacheManager(cache_dir=config.bot_cache_dir)
+    key = index_cache_key(file_hash, chunk_size, chunk_overlap, config)
 
-    existing = load_index(file_hash, cache_manager)
+    existing = load_index(key, cache_manager)
     if existing is not None:
         return existing
 
     index = build_index_from_documents(documents, chunk_size, chunk_overlap)
-    save_index(index, file_hash, config.cache_dir, cache_manager)
+    save_index(index, key, config.cache_dir, cache_manager)
     return index
+
+
+def index_cache_key(file_hash: str, chunk_size: int, chunk_overlap: int, config: AppConfig) -> str:
+    """Vectors from different embedding models or chunkings must never be mixed."""
+    embed_id = hashlib.sha256(config.embed_identity.encode()).hexdigest()[:10]
+    return f"{file_hash}_{embed_id}_{chunk_size}_{chunk_overlap}"

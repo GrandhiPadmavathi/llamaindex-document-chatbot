@@ -16,6 +16,13 @@ def configure_llama_index(config: AppConfig | None = None, temperature: float = 
 
 def build_llm(config: AppConfig | None = None, temperature: float = 0.1) -> LLM:
     config = config or DEFAULT_CONFIG
+    if config.llm_provider == "groq":
+        if not config.groq_api_key:
+            raise ValueError("GROQ_API_KEY is required when LLM_PROVIDER=groq")
+        from llama_index.llms.groq import Groq
+
+        return Groq(model=config.groq_model, api_key=config.groq_api_key, temperature=temperature)
+
     if config.llm_provider == "openai":
         if not config.openai_api_key:
             raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
