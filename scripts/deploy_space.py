@@ -18,7 +18,7 @@ from pathlib import Path
 from huggingface_hub import HfApi
 
 ROOT = Path(__file__).resolve().parent.parent
-INCLUDE = ["app.py", "requirements.txt", "chatbot", "sample_docs", "LICENSE"]
+INCLUDE = ["app.py", "requirements.txt", ".streamlit", "chatbot", "sample_docs", "LICENSE"]
 IGNORE = ["**/__pycache__/**", "*.pyc"]
 
 
