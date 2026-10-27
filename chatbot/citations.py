@@ -57,11 +57,18 @@ def format_context_block(citations: list[SourceCitation], nodes: list[NodeWithSc
     return "\n\n".join(lines)
 
 
+_MARKDOWN_SPECIAL = set("\\`*_[]#|<>~$")
+
+
+def escape_markdown(text: str) -> str:
+    return "".join(f"\\{ch}" if ch in _MARKDOWN_SPECIAL else ch for ch in text)
+
+
 def format_sources_markdown(citations: list[SourceCitation]) -> str:
     parts: list[str] = []
     for c in citations:
-        loc = c.label()
-        parts.append(f"**[{c.index}]** {loc}\n> {c.snippet}")
+        loc = escape_markdown(c.label())
+        parts.append(f"**[{c.index}]** {loc}\n> {escape_markdown(c.snippet)}")
     return "\n\n".join(parts)
 
 
