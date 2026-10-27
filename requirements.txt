@@ -1,4 +1,5 @@
-streamlit>=1.30
+streamlit>=1.42
+Authlib>=1.3.2
 python-dotenv>=1.0
 llama-index-core>=0.14
 llama-index-llms-ollama>=0.9

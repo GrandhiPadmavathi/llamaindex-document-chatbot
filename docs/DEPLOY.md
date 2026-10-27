@@ -57,6 +57,31 @@ LLM_PROVIDER=groq EMBED_PROVIDER=huggingface DEMO_MODE=1 streamlit run app.py
 
 Indexes are cached per document, embedding model and chunk settings, so switching providers never mixes vectors.
 
+## Sign-in and roles
+
+Streamlit's built-in OIDC support (`st.login`, needs `Authlib`) works with any OpenID Connect provider. Register a
+web application with the provider, set its redirect URI to `<app url>/oauth2callback`, and put the client in
+`.streamlit/secrets.toml` (git-ignored; on Hugging Face Spaces, add the same values as Space secrets):
+
+```toml
+[auth]
+redirect_uri = "http://localhost:8501/oauth2callback"
+cookie_secret = "a long random string"   # python -c "import secrets; print(secrets.token_urlsafe(32))"
+client_id = "..."
+client_secret = "..."
+server_metadata_url = "https://accounts.google.com/.well-known/openid-configuration"
+# Microsoft Entra ID: https://login.microsoftonline.com/<tenant-id>/v2.0/.well-known/openid-configuration
+```
+
+Then choose who gets in and what they can do:
+
+```bash
+AUTH_REQUIRED=1 AUTH_ALLOWED=@yourcompany.com AUTH_CONTRIBUTORS=alice@yourcompany.com \
+AUTH_ADMINS=you@yourcompany.com streamlit run app.py
+```
+
+If `AUTH_REQUIRED=1` and no `[auth]` section exists, the app shows a configuration error instead of opening up.
+
 ## Environment variables
 
 See `.env.example` for `OLLAMA_BASE_URL`, `LLM_MODEL`, `EMBED_MODEL`, and optional OpenAI-compatible settings.

@@ -70,7 +70,12 @@ def get_or_create_index(
     chunk_overlap: int,
     config: AppConfig | None = None,
     cache_manager: BotCacheManager | None = None,
+    persist: bool = True,
 ) -> VectorStoreIndex:
+    """With persist=False the index (which holds the document text) stays in memory and is never read from or
+    written to the disk cache, so a shared server keeps no copy of a user's upload."""
+    if not persist:
+        return build_index_from_documents(documents, chunk_size, chunk_overlap)
     config = config or DEFAULT_CONFIG
     cache_manager = cache_manager or BotCacheManager(cache_dir=config.bot_cache_dir)
     key = index_cache_key(file_hash, chunk_size, chunk_overlap, config)

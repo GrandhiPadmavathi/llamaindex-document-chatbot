@@ -1,5 +1,7 @@
 import streamlit as st
 
+from chatbot import access
+from chatbot.access import LOCAL_USER, AccessPolicy, Principal, QuotaExceeded, UsageLedger
 from chatbot.answering import generate_answer
 from chatbot.cache import BotCacheManager
 from chatbot.citations import format_sources_markdown
@@ -34,13 +36,53 @@ st.caption(
     f"citations · model: **{config.llm_identity}**"
 )
 
+policy = AccessPolicy.from_env()
+persist_uploads = not (policy.required or config.demo_mode)
+
+
+@st.cache_resource(show_spinner=False)
+def usage_ledger() -> UsageLedger:
+    return UsageLedger()
+
+
+def signed_in_user() -> Principal:
+    if not policy.required:
+        return LOCAL_USER
+    if not access.auth_configured():
+        st.error(
+            "Sign-in is required (`AUTH_REQUIRED=1`) but no identity provider is configured. "
+            "Add an `[auth]` section to `.streamlit/secrets.toml`; see docs/DEPLOY.md."
+        )
+        st.stop()
+    identity = access.read_identity()
+    if identity is None:
+        st.info("Sign in to ask questions about the documents.")
+        st.button("Sign in", type="primary", on_click=st.login, args=(policy.provider,) if policy.provider else ())
+        st.stop()
+    user = policy.principal(identity)
+    if user is None:
+        email = identity.get("email") or identity.get("preferred_username") or "This account"
+        if st.session_state.get("denied") != email:
+            st.session_state.denied = email
+            access.log_event("access_denied", email=email, reason="account not allowed or email not verified")
+        st.error(f"{email} is not allowed to use this app. Ask an administrator for access.")
+        st.button("Sign out", on_click=st.logout)
+        st.stop()
+    if st.session_state.get("signed_in_as") != user.email:
+        st.session_state.signed_in_as = user.email
+        access.log_event("login", user=user.email, role=user.role)
+    return user
+
+
+user = signed_in_user()
+
 
 @st.cache_resource(show_spinner=False)
 def sample_documents():
     return load_documents_from_directory(config.sample_docs_dir)
 
 
-def build_index(documents, file_hash: str, settings: RetrievalSettings):
+def build_index(documents, file_hash: str, settings: RetrievalSettings, persist: bool = True):
     configure_llama_index(config, temperature=settings.temperature)
     return get_or_create_index(
         documents,
@@ -49,6 +91,7 @@ def build_index(documents, file_hash: str, settings: RetrievalSettings):
         chunk_overlap=settings.chunk_overlap,
         config=config,
         cache_manager=cache_manager,
+        persist=persist,
     )
 
 
@@ -60,13 +103,27 @@ def sample_index(chunk_size: int, chunk_overlap: int):
 
 
 with st.sidebar:
+    if policy.required:
+        st.caption(f"Signed in as **{user.name}** · {user.role}")
+        st.button("Sign out", on_click=st.logout)
+        if user.can("usage"):
+            with st.expander("Usage today"):
+                rows = usage_ledger().today()
+                if rows:
+                    st.dataframe(rows, hide_index=True)
+                else:
+                    st.caption("No activity yet.")
+        st.divider()
     st.title("Documents")
+    sources = ["Sample documents", "Upload your own"] if user.can("upload") else ["Sample documents"]
     source = st.radio(
         "Ask questions about",
-        ["Sample documents", "Upload your own"],
-        index=0 if config.demo_mode else 1,
+        sources,
+        index=0 if config.demo_mode or len(sources) == 1 else 1,
         help="The samples are fictional support guides for a mobile operator.",
     )
+    if not user.can("upload"):
+        st.caption("Uploading your own documents needs contributor access.")
     file = None
     if source == "Sample documents":
         names = sorted({d.metadata.get("filename", "?") for d in sample_documents()})
@@ -74,8 +131,8 @@ with st.sidebar:
     else:
         limit = f" (max {config.demo_max_upload_mb:g} MB)" if config.demo_mode else ""
         file = st.file_uploader(f"Upload a document{limit}", type=UPLOAD_TYPES)
-        if config.demo_mode:
-            st.caption("Uploads are processed in memory for this session only. Don't upload private data.")
+        if not persist_uploads:
+            st.caption("Uploads are indexed in memory for this session only and never written to disk.")
 
     st.divider()
     st.subheader("Retrieval settings")
@@ -83,9 +140,10 @@ with st.sidebar:
     chunk_overlap = st.slider("Chunk overlap", 0, 400, config.default_chunk_overlap, 25)
     top_k = st.slider("Top K chunks", 1, 15, config.default_top_k)
     hybrid = st.toggle("Hybrid search (BM25 + vector)", value=True)
-    rerank = st.toggle("Cross-encoder re-rank", value=False)
+    locked = None if user.can("advanced") else "Needs contributor access (extra model calls)."
+    rerank = st.toggle("Cross-encoder re-rank", value=False, disabled=bool(locked), help=locked)
     temperature = st.slider("Temperature", 0.0, 1.0, 0.1, 0.05)
-    faithfulness_check = st.toggle("Faithfulness check (LLM judge)", value=False)
+    faithfulness_check = st.toggle("Faithfulness check (LLM judge)", value=False, disabled=bool(locked), help=locked)
 
     if st.button("Clear chat"):
         st.session_state.pop("messages", None)
@@ -123,8 +181,25 @@ else:
         st.stop()
     file_hash = content_fingerprint(documents)
     chat_key = f"upload:{file_hash}"
-    with st.spinner("Loading or building index..."):
-        index = build_index(documents, file_hash, settings)
+    uploaded = st.session_state.setdefault("uploaded", set())
+    if policy.required and file_hash not in uploaded:
+        try:
+            usage_ledger().consume(user.email, "upload", policy.uploads_per_day)
+        except QuotaExceeded as exc:
+            access.log_event("quota_exceeded", user=user.email, kind="upload")
+            st.warning(str(exc))
+            st.stop()
+        uploaded.add(file_hash)
+        access.log_event("upload", user=user.email, file=file.name, bytes=file.size, sha=file_hash[:12])
+    index_key = (file_hash, chunk_size, chunk_overlap)
+    session_index = st.session_state.get("session_index")
+    if not persist_uploads and session_index and session_index[0] == index_key:
+        index = session_index[1]
+    else:
+        with st.spinner("Loading or building index..."):
+            index = build_index(documents, file_hash, settings, persist=persist_uploads)
+        if not persist_uploads:
+            st.session_state.session_index = (index_key, index)
     llm = configure_llama_index(config, temperature=temperature)
 
 if st.session_state.get("chat_key") != chat_key:
@@ -149,7 +224,14 @@ if source == "Sample documents" and not st.session_state.messages and not prompt
             prompt = question
 
 if prompt:
-    if config.demo_mode and st.session_state.questions_asked >= config.demo_max_questions:
+    if policy.required:
+        try:
+            usage_ledger().consume(user.email, "question", policy.questions_per_day)
+        except QuotaExceeded as exc:
+            access.log_event("quota_exceeded", user=user.email, kind="question")
+            st.warning(str(exc))
+            st.stop()
+    elif config.demo_mode and st.session_state.questions_asked >= config.demo_max_questions:
         st.warning(f"This public demo allows {config.demo_max_questions} questions per session. Refresh to start over.")
         st.stop()
     prompt = prompt.strip()[: config.max_question_chars]
@@ -181,3 +263,6 @@ if prompt:
             st.markdown(sources_md)
 
     st.session_state.messages.append({"role": "assistant", "content": result.text, "sources": sources_md})
+    if policy.required:
+        access.log_event("question", user=user.email, source=chat_key.split(":")[0], chars=len(prompt),
+                         refused=result.refused, citations=len(result.citations))

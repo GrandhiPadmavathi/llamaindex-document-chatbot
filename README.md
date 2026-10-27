@@ -28,6 +28,7 @@ Most “chat with PDF” demos stop at vector search and hallucinate when contex
 | **Faithfulness badge** | Optional LLM judge toggle in the sidebar |
 | **Disk cache** | Vector index persisted under `llamaindex_cache/` keyed by content hash |
 | **Evals** | `evals/run_eval.py` compares vector-only vs hybrid vs hybrid+rerank on Hit@k, MRR, and answer checks |
+| **Sign-in and roles** | Optional OIDC sign-in (Google, Entra ID, Okta...), reader / contributor / admin roles, per-user daily quotas, audit log; see [Security](#security) |
 
 ## Architecture
 
@@ -108,6 +109,39 @@ python scripts/smoke_chat.py
 | Temperature | 0.1 | LLM creativity |
 | Faithfulness check | off | Extra LLM call; shows supported / unsupported badge |
 
+## Security
+
+Run locally, the app is single-user and needs no sign-in. Shared or public deployments set `AUTH_REQUIRED=1` and an
+OpenID Connect provider (setup in [docs/DEPLOY.md](docs/DEPLOY.md#sign-in-and-roles)); the app then shows nothing but
+a sign-in button until the provider vouches for the user.
+
+| Role | Who | Can |
+|---|---|---|
+| reader | anyone in `AUTH_ALLOWED` (an address or `@domain`; empty means any verified account) | ask questions about the sample documents |
+| contributor | `AUTH_CONTRIBUTORS` | also upload documents and turn on re-rank and the faithfulness check, which cost extra model calls |
+| admin | `AUTH_ADMINS` | also see today's usage per user |
+
+- **Identity comes from the provider's signed token**, matched by exact address or exact domain (`@corp.example`
+  does not match `evil-corp.example` or `corp.example.attacker.io`). Accounts the provider marks as unverified are
+  refused.
+- **Per-user daily quotas** for questions and uploads (`QUOTA_QUESTIONS_PER_DAY`, `QUOTA_UPLOADS_PER_DAY`) are kept
+  server-side, so a page refresh or a new tab does not reset them, unlike the per-session limit of the anonymous demo.
+- **Uploads stay in memory.** When sign-in or demo mode is on, an uploaded document is indexed for that browser
+  session only and never written to the disk cache. Locally, the disk cache keeps working as before.
+- **Fails closed.** With `AUTH_REQUIRED=1` but no provider configured, the app shows a configuration error.
+- **Audit log** (`chatbot.audit`, JSON): sign-ins, refused accounts, uploads (name, size, content hash), questions
+  (user, length, refused or not, citation count) and quota hits. Question text and document content are not logged.
+- Secrets stay out of the repo: the OIDC client goes in the git-ignored `.streamlit/secrets.toml` (or Space
+  secrets), and `scripts/deploy_space.py` never uploads that file.
+
+`tests/test_access.py` checks the matching rules, roles, quotas and in-memory uploads, and drives the real app with a
+simulated identity provider: signed-out users see only the sign-in button, refused accounts are audited, readers
+cannot upload or use the costly settings, and a quota survives a new session. A further test checks that the Space
+deploy never stages `secrets.toml`.
+
+Not covered: per-user document libraries (uploads are per session), and quotas are per server process, so a
+multi-replica deployment would need a shared store such as Redis.
+
 ## Evaluation
 
 ```bash
@@ -143,7 +177,8 @@ Full output: [evals/results.md](evals/results.md); per-configuration JSON in `ev
 pytest
 ```
 
-Unit tests cover loaders, chunking, RRF fusion, citations, and refusal behavior with a fake LLM (no Ollama required).
+26 tests cover loaders, chunking, RRF fusion, citations, refusal behavior with a fake LLM, and sign-in, roles and
+quotas (no Ollama or identity provider required). Two integration tests are marked `ollama` and `slow`.
 
 ## Docker
 

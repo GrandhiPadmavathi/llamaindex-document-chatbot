@@ -19,14 +19,15 @@ from huggingface_hub import HfApi
 
 ROOT = Path(__file__).resolve().parent.parent
 INCLUDE = ["app.py", "requirements.txt", ".streamlit", "chatbot", "sample_docs", "LICENSE"]
-IGNORE = ["**/__pycache__/**", "*.pyc"]
+IGNORE = ["**/__pycache__/**", "*.pyc", "**/secrets.toml"]
 
 
 def stage(target: Path) -> None:
     for name in INCLUDE:
         src = ROOT / name
         if src.is_dir():
-            shutil.copytree(src, target / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+            # .streamlit/secrets.toml holds the sign-in client secret; on a Space it must be a Space secret.
+            shutil.copytree(src, target / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "secrets.toml"))
         else:
             shutil.copy2(src, target / name)
     for name in ("Dockerfile", "README.md"):
