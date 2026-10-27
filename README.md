@@ -4,6 +4,15 @@
 
 > Portfolio project by [GrandhiPadmavathi](https://github.com/GrandhiPadmavathi). All sample documents use a fictional **OrbitMobile** brand — no real operator data.
 
+## Demo
+
+![Document Chatbot demo: cited answers, source snippets and a grounded refusal](docs/demo.gif)
+
+Recorded locally with `mistral` and `nomic-embed-text` on Ollama over the sample documents; model thinking time is
+sped up. It asks about card refunds and eSIM QR codes (each answer cites its source, and the Sources panel shows the
+exact snippets), then asks for a headquarters address that is not in any document, so the bot refuses instead of
+inventing one.
+
 ## Why this exists
 
 Most “chat with PDF” demos stop at vector search and hallucinate when context is thin. This app is meant to show production-minded RAG patterns: **hybrid retrieval**, optional **re-ranking**, **grounded answers with refusals**, **source citations**, and a small **evaluation harness** you can re-run locally.
