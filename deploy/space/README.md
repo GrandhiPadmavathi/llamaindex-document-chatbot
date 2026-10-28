@@ -16,7 +16,7 @@ Ask questions about a set of fictional mobile-operator support guides, or upload
 
 - Hybrid retrieval: BM25 + vector search fused with Reciprocal Rank Fusion, optional cross-encoder re-ranking
 - Answers cite the exact chunks they used and refuse when the documents don't contain the answer
-- Model: Llama 3.1 8B via Groq; embeddings: `BAAI/bge-small-en-v1.5` on CPU
+- Model: Qwen3.8 27B via Groq; embeddings: `BAAI/bge-small-en-v1.5` on CPU
 
 Source code, evaluation results and the local (Ollama) setup:
 https://github.com/GrandhiPadmavathi/llamaindex-document-chatbot

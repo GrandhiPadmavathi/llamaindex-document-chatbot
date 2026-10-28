@@ -32,7 +32,7 @@ Spaces have no Ollama daemon, so the hosted demo uses:
 
 | Part | Setting |
 |---|---|
-| LLM | `LLM_PROVIDER=groq`, `GROQ_MODEL=llama-3.1-8b-instant` (free tier) |
+| LLM | `LLM_PROVIDER=groq`, `GROQ_MODEL=qwen/qwen3.8-27b` (free tier) |
 | Embeddings | `EMBED_PROVIDER=huggingface`, `BAAI/bge-small-en-v1.5` on CPU (baked into the image) |
 | Limits | `DEMO_MODE=1`: sample documents preloaded, 25 questions per session, 2 MB uploads, 500-character questions |
 

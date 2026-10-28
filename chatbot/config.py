@@ -24,7 +24,7 @@ class AppConfig:
         "CROSS_ENCODER_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2"
     )
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
-    groq_model: str = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    groq_model: str = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
     embed_provider: str = os.getenv("EMBED_PROVIDER", "ollama").lower()
     hf_embed_model: str = os.getenv("HF_EMBED_MODEL", "BAAI/bge-small-en-v1.5")
     demo_mode: bool = os.getenv("DEMO_MODE", "0").lower() in ("1", "true", "yes")

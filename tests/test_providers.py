@@ -19,8 +19,8 @@ def test_cache_key_depends_on_embedding_model_and_chunking():
 
 
 def test_identities():
-    groq = dataclasses.replace(DEFAULT_CONFIG, llm_provider="groq", groq_model="llama-3.1-8b-instant")
-    assert groq.llm_identity == "Groq · llama-3.1-8b-instant"
+    groq = dataclasses.replace(DEFAULT_CONFIG, llm_provider="groq", groq_model="qwen/qwen3.8-27b")
+    assert groq.llm_identity == "Groq · qwen/qwen3.8-27b"
     hf = dataclasses.replace(DEFAULT_CONFIG, embed_provider="huggingface", hf_embed_model="BAAI/bge-small-en-v1.5")
     assert hf.embed_identity == "huggingface:BAAI/bge-small-en-v1.5"
 
